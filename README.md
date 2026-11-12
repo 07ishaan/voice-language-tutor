@@ -11,7 +11,7 @@ Talk to a language tutor with **any voice you design**. You speak, the tutor ans
 You speak -> browser -> text -> Groq -> reply text -> Voicebox -> audio
                                          |-> shown on screen (+ translation and notes)
 ```
-   ![Screenshot](docs/screenshot.png)
+   ![Screenshot](docs/Screenshot.png)
 
 ## Quick start (Windows)
 
