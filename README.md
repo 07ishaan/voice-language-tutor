@@ -56,6 +56,24 @@ Files named `characters/local-*.json` are ignored by git, so you can keep privat
 - **Send after speaking:** send your speech as soon as it is recognised, or edit it first.
 - **Voice chunks:** how much text is sent to Voicebox at once. Short chunks start sooner. Long chunks can sound smoother but may drift in voice quality and take longer to start.
 
+## Known limitations
+
+This is an early version (v0.1.0). Please read these before you start.
+
+**Tested on:** Windows 11 with Voicebox v0.5.0, an NVIDIA RTX 3060 (12 GB) and the Chatterbox multilingual engine. The Mac/Linux launcher (`start.sh`) and other setups are untested. Voicebox's local API addresses may change between versions, so a different version may need small changes in `server.py`.
+
+**Voice speed.** Local speech models can generate slower than real time on mid-range GPUs. On the test machine, Chatterbox took about 10 seconds for 4 seconds of audio, and Qwen3-TTS was slower. The tutor shows the reply text immediately and speaks sentence by sentence to hide some of the delay. Shorter replies and smaller voice chunks start speaking sooner.
+
+**Voice quality.** Pronunciation, pitch accent and consistency depend on the voice model, the language and your reference sample or voice description. Always check that the voice sounds right in your target language before relying on it for study. Long chunks of text can make a cloned voice drift.
+
+**Speech input.** It uses your browser's built-in speech recognition, so it needs Chrome or Edge and an internet connection. It may "correct" unclear pronunciation into the most likely sentence, so it is not a pronunciation checker.
+
+**The AI tutor.** Replies come from a language model on Groq's free tier. It can make mistakes in grammar, vocabulary or explanations, so double-check anything important with a textbook or a teacher. Free-tier limits apply, and Groq changes which models are available. The tutor asks Groq for the current list and picks one automatically, and `http://localhost:8000/api/models` shows what your key can use.
+
+**No saved history.** The conversation lives in the browser page and is lost when you reload it. Only your page settings are remembered.
+
+**Local only.** The server is meant to run on your own computer. Do not expose it to the internet, because it uses your Groq API key.
+
 ## Troubleshooting
 
 - **Model not found / Groq error:** open http://localhost:8000/api/models to see which models your key can use. Leave `GROQ_MODEL` empty to choose automatically.
