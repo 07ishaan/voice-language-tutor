@@ -58,7 +58,7 @@ Files named `characters/local-*.json` are ignored by git, so you can keep privat
 ## Troubleshooting
 
 - **Model not found / Groq error:** open http://localhost:8000/api/models to see which models your key can use. Leave `GROQ_MODEL` empty to choose automatically.
-- **Mai/tutor never speaks:** make sure the Voicebox app is open, and watch the `[tts]` lines in the server window.
+- **The tutor never speaks:** make sure the Voicebox app is open, and watch the `[tts]` lines in the server window.
 - **Profile not found:** `voice_profile` must match the profile name in Voicebox exactly. The error lists the names it found.
 - **Slow voice:** local speech models can run slower than real time on mid-range GPUs. Try shorter replies or smaller chunks.
 - **Speech input does not work:** use Chrome or Edge, allow the microphone, and check your internet connection.
