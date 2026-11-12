@@ -1,0 +1,12 @@
+# Secrets and personal files: never commit these
+.env
+characters/local-*.json
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Generated audio
+*.wav

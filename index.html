@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Voice Language Tutor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;600&family=Noto+Sans+JP:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d1220;
+    --panel: #151c30;
+    --panel-2: #1c2540;
+    --line: #2a3556;
+    --text: #e9ecf5;
+    --muted: #8b95b3;
+    --accent: #f0a9bd;
+    --accent-ink: #2a0f19;
+    --error: #ff8b8b;
+    --jp-serif: "Noto Serif JP", "Yu Mincho", "Hiragino Mincho ProN", serif;
+    --jp-sans: "Noto Sans JP", "Yu Gothic", "Meiryo", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: var(--jp-sans); font-size: 16px; line-height: 1.6;
+    display: flex; flex-direction: column; max-width: 760px; margin: 0 auto;
+  }
+  header {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    padding: 14px 18px; border-bottom: 1px solid var(--line); flex-wrap: wrap;
+  }
+  h1 { font-family: var(--jp-serif); font-weight: 600; font-size: 1.25rem; margin: 0; }
+  .toggles { display: flex; gap: 16px; color: var(--muted); font-size: 0.875rem; }
+  .toggles label { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+  input[type=checkbox] { accent-color: var(--accent); }
+  select { background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 3px 6px; font: inherit; font-size: 0.8125rem; }
+
+  #chat { flex: 1; overflow-y: auto; padding: 18px; display: flex; flex-direction: column; gap: 14px; scroll-behavior: smooth; }
+  .empty { color: var(--muted); margin: auto; text-align: center; max-width: 34ch; }
+  .msg { max-width: 88%; padding: 12px 16px; border-radius: 16px; }
+  .me { align-self: flex-end; background: var(--panel-2); border-bottom-right-radius: 4px; font-family: var(--jp-serif); }
+  .mai { align-self: flex-start; background: var(--panel); border: 1px solid var(--line); border-bottom-left-radius: 4px; }
+  .mai .jp { font-family: var(--jp-serif); font-size: 1.15rem; line-height: 1.8; }
+  .actions { display: flex; gap: 10px; align-items: center; margin-top: 8px; }
+  .actions button {
+    background: none; border: 1px solid var(--line); color: var(--muted);
+    border-radius: 999px; padding: 3px 12px; font: inherit; font-size: 0.8125rem; cursor: pointer;
+  }
+  .actions button:hover { color: var(--text); border-color: var(--muted); }
+  details { margin-top: 8px; color: var(--muted); font-size: 0.9375rem; }
+  summary { cursor: pointer; font-size: 0.8125rem; }
+  details p { margin: 6px 0 0; color: var(--text); opacity: 0.85; white-space: pre-wrap; }
+  .typing { color: var(--muted); font-style: italic; }
+
+  #status { min-height: 24px; padding: 0 18px; font-size: 0.8125rem; color: var(--muted); }
+  #status.error { color: var(--error); }
+
+  form {
+    display: flex; gap: 10px; padding: 12px 18px 18px; border-top: 1px solid var(--line);
+    padding-bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+  }
+  #input {
+    flex: 1; background: var(--panel); border: 1px solid var(--line); color: var(--text);
+    border-radius: 12px; padding: 12px 14px; font: inherit; font-family: var(--jp-serif);
+  }
+  #input:focus, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .btn { border: 0; border-radius: 12px; padding: 0 18px; font: inherit; font-weight: 500; cursor: pointer; }
+  #send { background: var(--accent); color: var(--accent-ink); }
+  #mic { background: var(--panel-2); color: var(--text); border: 1px solid var(--line); min-width: 88px; }
+  #mic.on { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  #mic:disabled { opacity: 0.4; cursor: not-allowed; }
+  @media (prefers-reduced-motion: reduce) { #chat { scroll-behavior: auto; } }
+</style>
+</head>
+<body>
+  <header>
+    <h1 id="title">Voice Language Tutor</h1>
+    <div class="toggles">
+      <label><input type="checkbox" id="autoplay" checked> Voice replies</label>
+      <label><input type="checkbox" id="autosend" checked> Send after speaking</label>
+      <label>Voice chunks
+        <select id="chunk">
+          <option value="1">One sentence</option>
+          <option value="60">Up to ~60 characters</option>
+          <option value="120">Up to ~120 characters</option>
+          <option value="250">Up to ~250 characters</option>
+          <option value="0">Whole reply</option>
+        </select>
+      </label>
+    </div>
+  </header>
+
+  <main id="chat" aria-live="polite">
+    <p class="empty" id="empty">Press Speak or type a message to start.</p>
+  </main>
+
+  <div id="status"></div>
+
+  <form id="form" autocomplete="off">
+    <button type="button" class="btn" id="mic">Speak</button>
+    <input id="input" placeholder="Type, or press Speak">
+    <button type="submit" class="btn" id="send">Send</button>
+  </form>
+
+<script>
+const chat = document.getElementById('chat');
+const input = document.getElementById('input');
+const statusEl = document.getElementById('status');
+const micBtn = document.getElementById('mic');
+const autoplayBox = document.getElementById('autoplay');
+const autosendBox = document.getElementById('autosend');
+const chunkSel = document.getElementById('chunk');
+
+const history = [];
+
+// ---- character settings come from the server (characters/<name>.json) ----
+let CFG = { name: 'Tutor', native_language: 'English', stt_language: 'en-US' };
+fetch('/api/config').then(r => r.json()).then(c => {
+  CFG = c;
+  document.title = c.title;
+  document.getElementById('title').textContent = c.title;
+  input.placeholder = c.placeholder;
+  input.lang = c.stt_language.split('-')[0];
+  if (typeof rec !== 'undefined' && rec) rec.lang = c.stt_language;
+  const e = document.getElementById('empty');
+  if (e) e.textContent = c.empty_text;
+}).catch(() => {});
+
+// ---- settings (remembered between visits) ----
+try {
+  autoplayBox.checked = localStorage.getItem('autoplay') !== '0';
+  autosendBox.checked = localStorage.getItem('autosend') !== '0';
+  chunkSel.value = localStorage.getItem('chunk') || '1';
+} catch (e) {}
+if (!chunkSel.value) chunkSel.value = '1';
+chunkSel.onchange = () => { try { localStorage.setItem('chunk', chunkSel.value); } catch (e) {} };
+autoplayBox.onchange = () => { try { localStorage.setItem('autoplay', autoplayBox.checked ? '1' : '0'); } catch (e) {} };
+autosendBox.onchange = () => { try { localStorage.setItem('autosend', autosendBox.checked ? '1' : '0'); } catch (e) {} };
+
+function setStatus(text, isError = false) {
+  statusEl.textContent = text || '';
+  statusEl.className = isError ? 'error' : '';
+}
+
+function addBubble(cls) {
+  document.getElementById('empty')?.remove();
+  const el = document.createElement('div');
+  el.className = 'msg ' + cls;
+  chat.appendChild(el);
+  chat.scrollTop = chat.scrollHeight;
+  return el;
+}
+
+// ---- voice playback (sentence by sentence) ----
+const audioCache = new Map();   // sentence -> Promise<objectURL>
+let playToken = 0;
+let currentAudio = null;
+let currentResolve = null;
+
+function splitSentences(text) {
+  return (text.match(/[^。！？!?.…]+[。！？!?.…]*/g) || [text]).map(s => s.trim()).filter(Boolean);
+}
+
+// Group sentences into pieces of up to N characters (0 = the whole reply in one go).
+function chunkText(text) {
+  const max = parseInt(chunkSel.value, 10);
+  const sentences = splitSentences(text);
+  if (max === 0) return [sentences.join('')];
+  const out = [];
+  let cur = '';
+  for (const s of sentences) {
+    if (cur && (cur + s).length > max) { out.push(cur); cur = s; } else { cur += s; }
+  }
+  if (cur) out.push(cur);
+  return out;
+}
+
+function getAudio(sentence) {
+  if (audioCache.has(sentence)) return audioCache.get(sentence);
+  const p = (async () => {
+    const r = await fetch('/api/tts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: sentence }),
+    });
+    if (!r.ok) {
+      let detail = r.statusText;
+      try { detail = (await r.json()).detail || detail; } catch (e) {}
+      throw new Error(detail);
+    }
+    return URL.createObjectURL(await r.blob());
+  })();
+  p.catch(() => audioCache.delete(sentence));
+  audioCache.set(sentence, p);
+  return p;
+}
+
+function stopAudio() {
+  playToken++;
+  if (currentAudio) { currentAudio.pause(); currentAudio = null; }
+  if (currentResolve) { currentResolve(); currentResolve = null; }
+}
+
+function playUrl(url) {
+  return new Promise((resolve, reject) => {
+    const a = new Audio(url);
+    currentAudio = a;
+    currentResolve = resolve;
+    a.onended = () => { currentResolve = null; resolve(); };
+    a.onerror = () => { currentResolve = null; reject(new Error('Could not play the audio.')); };
+    a.play().catch(reject);
+  });
+}
+
+async function speak(text) {
+  stopAudio();
+  const token = playToken;
+  const sentences = chunkText(text);
+  try {
+    for (let i = 0; i < sentences.length; i++) {
+      if (token !== playToken) return;
+      setStatus(`${CFG.name} is preparing the voice… (${i + 1}/${sentences.length})`);
+      const url = await getAudio(sentences[i]);
+      if (token !== playToken) return;
+      if (i + 1 < sentences.length) getAudio(sentences[i + 1]).catch(() => {}); // prepare next while this plays
+      setStatus(`${CFG.name} is speaking…`);
+      await playUrl(url);
+    }
+    if (token === playToken) setStatus('');
+  } catch (e) {
+    if (token === playToken) setStatus('Voice problem: ' + e.message, true);
+  }
+}
+
+// ---- chat ----
+async function send(text) {
+  text = text.trim();
+  if (!text) return;
+  stopAudio();
+  input.value = '';
+  addBubble('me').textContent = text;
+  history.push({ role: 'user', content: text });
+
+  const wait = addBubble('mai');
+  wait.innerHTML = '<span class="typing">…</span>';
+  setStatus('');
+
+  try {
+    const r = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ history }),
+    });
+    if (!r.ok) {
+      let detail = r.statusText;
+      try { detail = (await r.json()).detail || detail; } catch (e) {}
+      throw new Error(detail);
+    }
+    const { target, native } = await r.json();
+    history.push({ role: 'assistant', content: JSON.stringify({ target, native }) });
+    renderMai(wait, target, native);
+    if (autoplayBox.checked && target) speak(target);
+  } catch (e) {
+    wait.remove();
+    history.pop();
+    setStatus('Chat problem: ' + e.message, true);
+  }
+}
+
+function renderMai(el, target, native) {
+  el.textContent = '';
+  const jp = document.createElement('div');
+  jp.className = 'jp';
+  jp.textContent = target;
+  el.appendChild(jp);
+
+  const actions = document.createElement('div');
+  actions.className = 'actions';
+  const play = document.createElement('button');
+  play.type = 'button';
+  play.textContent = 'Play voice';
+  play.onclick = () => speak(target);
+  const stop = document.createElement('button');
+  stop.type = 'button';
+  stop.textContent = 'Stop';
+  stop.onclick = () => { stopAudio(); setStatus(''); };
+  actions.append(play, stop);
+  el.appendChild(actions);
+
+  if (native) {
+    const d = document.createElement('details');
+    const s = document.createElement('summary');
+    s.textContent = CFG.native_language;
+    const p = document.createElement('p');
+    p.textContent = native;
+    d.append(s, p);
+    el.appendChild(d);
+  }
+  chat.scrollTop = chat.scrollHeight;
+}
+
+document.getElementById('form').addEventListener('submit', e => {
+  e.preventDefault();
+  send(input.value);
+});
+
+// ---- speaking to the tutor (browser speech recognition) ----
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+let rec = null;
+let listening = false;
+
+if (!SR) {
+  micBtn.disabled = true;
+  micBtn.title = 'Speech input needs Chrome or Edge';
+  setStatus('Speech input needs Chrome or Edge. You can still type.', true);
+} else {
+  rec = new SR();
+  rec.lang = CFG.stt_language;
+  rec.interimResults = true;
+  rec.continuous = false;
+
+  rec.onstart = () => { listening = true; micBtn.classList.add('on'); micBtn.textContent = 'Listening…'; setStatus(''); };
+  rec.onend = () => { listening = false; micBtn.classList.remove('on'); micBtn.textContent = 'Speak'; };
+  rec.onerror = e => {
+    const msgs = {
+      'not-allowed': 'Microphone is blocked. Click the lock icon in the address bar and allow the microphone.',
+      'service-not-allowed': 'Microphone is blocked. Click the lock icon in the address bar and allow the microphone.',
+      'no-speech': 'I did not hear anything. Try again.',
+      'audio-capture': 'No microphone found.',
+      'network': 'Speech recognition needs an internet connection.',
+    };
+    setStatus(msgs[e.error] || 'Speech input problem: ' + e.error, true);
+  };
+  rec.onresult = e => {
+    let finalText = '', interim = '';
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      const t = e.results[i][0].transcript;
+      if (e.results[i].isFinal) finalText += t; else interim += t;
+    }
+    input.value = finalText || interim;
+    if (finalText && autosendBox.checked) send(finalText);
+  };
+
+  micBtn.onclick = () => {
+    if (listening) { rec.stop(); return; }
+    stopAudio();
+    setStatus('');
+    try { rec.start(); } catch (e) {}
+  };
+}
+</script>
+</body>
+</html>
