@@ -1,3 +1,14 @@
 fastapi
 uvicorn
 httpx
+torch==2.6.0
+torchaudio==2.6.0
+transformers
+diffusers
+gradio
+aiofiles
+python-multipart
+pydantic
+chatterbox-tts==0.1.6
+PyYAML==6.0.2
+setuptools<81

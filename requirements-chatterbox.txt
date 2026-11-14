@@ -1,0 +1,3 @@
+# Chatterbox is included by the Windows first-run launcher.
+# start.bat selects a CUDA or CPU PyTorch wheel before installing this file.
+chatterbox-tts==0.1.6

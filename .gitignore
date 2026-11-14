@@ -10,3 +10,12 @@ venv/
 
 # Generated audio
 *.wav
+
+# Local setup and private media
+.claude/
+.pytest_cache/
+release/
+.publish-stage-*/
+characters/setup-tutor.json
+voices/
+*.mp3

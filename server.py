@@ -5,11 +5,13 @@ Run:  python server.py   then open http://localhost:8000
 import asyncio
 import json
 import os
+import secrets
 from pathlib import Path
+from typing import Literal
 
 import httpx
 import uvicorn
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel
 
@@ -38,6 +40,9 @@ GROQ_FALLBACK_MODEL = os.environ.get("GROQ_FALLBACK_MODEL", "").strip()
 VOICEBOX_URL = os.environ.get("VOICEBOX_URL", "http://localhost:17493").rstrip("/")
 CHARACTER = os.environ.get("CHARACTER", "example-japanese")
 TTS_TIMEOUT = float(os.environ.get("TTS_TIMEOUT", "180"))
+# "voicebox" = call the Voicebox app, "chatterbox" = run the Chatterbox model inside this server.
+TTS_BACKEND = os.environ.get("TTS_BACKEND", "voicebox").strip().lower()
+APP_SHUTDOWN_TOKEN = os.environ.get("VOICE_TUTOR_APP_TOKEN", "")
 
 
 def load_character() -> dict:
@@ -63,13 +68,58 @@ CHAR = load_character()
 # .env values override the character file if you set them.
 VOICEBOX_PROFILE = os.environ.get("VOICEBOX_PROFILE") or CHAR["voice_profile"]
 VOICEBOX_ENGINE = os.environ.get("VOICEBOX_ENGINE") or CHAR["engine"]
-VOICEBOX_LANGUAGE = os.environ.get("VOICEBOX_LANGUAGE") or CHAR["tts_language"]
+
+LANGUAGE_OPTIONS = [
+    {"code": "ar", "name": "Arabic", "stt": "ar-SA"},
+    {"code": "da", "name": "Danish", "stt": "da-DK"},
+    {"code": "de", "name": "German", "stt": "de-DE"},
+    {"code": "el", "name": "Greek", "stt": "el-GR"},
+    {"code": "en", "name": "English", "stt": "en-US"},
+    {"code": "es", "name": "Spanish", "stt": "es-ES"},
+    {"code": "fi", "name": "Finnish", "stt": "fi-FI"},
+    {"code": "fr", "name": "French", "stt": "fr-FR"},
+    {"code": "he", "name": "Hebrew", "stt": "he-IL"},
+    {"code": "hi", "name": "Hindi", "stt": "hi-IN"},
+    {"code": "it", "name": "Italian", "stt": "it-IT"},
+    {"code": "ja", "name": "Japanese", "stt": "ja-JP"},
+    {"code": "ko", "name": "Korean", "stt": "ko-KR"},
+    {"code": "ms", "name": "Malay", "stt": "ms-MY"},
+    {"code": "nl", "name": "Dutch", "stt": "nl-NL"},
+    {"code": "no", "name": "Norwegian", "stt": "nb-NO"},
+    {"code": "pl", "name": "Polish", "stt": "pl-PL"},
+    {"code": "pt", "name": "Portuguese", "stt": "pt-PT"},
+    {"code": "ru", "name": "Russian", "stt": "ru-RU"},
+    {"code": "sv", "name": "Swedish", "stt": "sv-SE"},
+    {"code": "sw", "name": "Swahili", "stt": "sw-KE"},
+    {"code": "tr", "name": "Turkish", "stt": "tr-TR"},
+    {"code": "zh", "name": "Chinese", "stt": "zh-CN"},
+]
+LANGUAGE_BY_CODE = {item["code"]: item for item in LANGUAGE_OPTIONS}
+CONFIGURED_LANGUAGE_CODE = os.environ.get("VOICEBOX_LANGUAGE") or CHAR["tts_language"]
+DEFAULT_LANGUAGE_CODE = CONFIGURED_LANGUAGE_CODE if CONFIGURED_LANGUAGE_CODE in LANGUAGE_BY_CODE else "ja"
+JLPT_LEVELS = ["N5", "N4", "N3", "N2", "N1"]
+CEFR_LEVELS = ["A1", "A2", "B1", "B2", "C1", "C2"]
 
 
-def build_system_prompt(c: dict) -> str:
+def default_level_for_character() -> str:
+    levels = JLPT_LEVELS if DEFAULT_LANGUAGE_CODE == "ja" else CEFR_LEVELS
+    current = str(CHAR["learner_level"]).upper()
+    return next((level for level in levels if level in current), levels[0])
+
+
+DEFAULT_LEARNER_LEVEL = default_level_for_character()
+
+
+def build_system_prompt(c: dict, response_length: str = "normal") -> str:
+    length_rules = {
+        "short": "Keep each target-language reply to one concise sentence.",
+        "normal": "Keep each target-language reply to 1 to 3 short sentences.",
+        "detailed": "Give a fuller target-language reply in 3 to 5 clear sentences, with useful detail at the learner's level.",
+    }
     rules = [
-        f"Reply only in {c['target_language']}, in 1 to 3 short sentences, using vocabulary and grammar for a "
+        f"Reply only in {c['target_language']}, using vocabulary and grammar for a "
         f"learner at level {c['learner_level']}.",
+        length_rules.get(response_length, length_rules["normal"]),
         f"If the learner makes a mistake, naturally use the correct form in your reply and mention the "
         f"correction briefly in the {c['native_language']} note.",
         "Occasionally introduce one new word or grammar pattern that fits the learner's level.",
@@ -90,17 +140,19 @@ def build_system_prompt(c: dict) -> str:
     )
 
 
-SYSTEM_PROMPT = build_system_prompt(CHAR)
-
 app = FastAPI()
 
 
 class ChatRequest(BaseModel):
     history: list[dict]  # [{"role": "user"|"assistant", "content": "..."}]
+    response_length: Literal["short", "normal", "detailed"] = "normal"
+    language_code: str = DEFAULT_LANGUAGE_CODE
+    learner_level: str = DEFAULT_LEARNER_LEVEL
 
 
 class TTSRequest(BaseModel):
     text: str
+    language_code: str = DEFAULT_LANGUAGE_CODE
 
 
 @app.get("/")
@@ -115,6 +167,9 @@ async def config():
         "name": CHAR["name"],
         "title": f"{CHAR['name']} · {CHAR['target_language']} tutor",
         "target_language": CHAR["target_language"],
+        "language_code": DEFAULT_LANGUAGE_CODE,
+        "languages": LANGUAGE_OPTIONS,
+        "learner_level": DEFAULT_LEARNER_LEVEL,
         "native_language": CHAR["native_language"],
         "stt_language": CHAR["stt_language"],
         "placeholder": CHAR.get("placeholder") or f"Say something in {CHAR['target_language']}",
@@ -181,8 +236,15 @@ async def models():
 async def chat(req: ChatRequest):
     if not GROQ_API_KEY:
         raise HTTPException(500, "GROQ_API_KEY is missing. Add it to the .env file.")
+    language = LANGUAGE_BY_CODE.get(req.language_code)
+    if not language:
+        raise HTTPException(422, "Choose a supported conversation language.")
+    valid_levels = JLPT_LEVELS if req.language_code == "ja" else CEFR_LEVELS
+    if req.learner_level not in valid_levels:
+        raise HTTPException(422, f"Choose a valid level for {language['name']}.")
+    profile = {**CHAR, "target_language": language["name"], "learner_level": req.learner_level}
 
-    messages = [{"role": "system", "content": SYSTEM_PROMPT}]
+    messages = [{"role": "system", "content": build_system_prompt(profile, req.response_length)}]
     for m in req.history[-20:]:
         if m.get("role") in ("user", "assistant") and m.get("content"):
             messages.append({"role": m["role"], "content": m["content"]})
@@ -206,7 +268,13 @@ async def chat(req: ChatRequest):
 
         for model in candidates[:6]:
             for use_json in (True, False):
-                body = {"model": model, "messages": messages, "temperature": 0.7, "max_tokens": 1500}
+                token_caps = {"short": 500, "normal": 1000, "detailed": 1800}
+                body = {
+                    "model": model,
+                    "messages": messages,
+                    "temperature": 0.7,
+                    "max_tokens": token_caps[req.response_length],
+                }
                 if use_json:
                     body["response_format"] = {"type": "json_object"}
                 r = await client.post(f"{GROQ_BASE}/chat/completions", headers=headers, json=body)
@@ -251,11 +319,66 @@ async def resolve_profile_id(client: httpx.AsyncClient) -> str:
     )
 
 
+# ---------- Built-in Chatterbox backend (no Voicebox needed) ----------
+_cb_model = None
+_cb_lock = asyncio.Lock()  # one generation at a time on the GPU
+
+
+def _load_chatterbox():
+    global _cb_model
+    if _cb_model is None:
+        try:
+            import torch
+            from chatterbox.mtl_tts import ChatterboxMultilingualTTS
+        except ImportError as e:
+            raise RuntimeError(
+                "Chatterbox is not installed. See 'Built-in voice' in the README. "
+                f"({e})"
+            )
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+        print(f"[tts] loading Chatterbox on {device} (first time can take a few minutes)...", flush=True)
+        _cb_model = ChatterboxMultilingualTTS.from_pretrained(device=device)
+        print(f"[tts] Chatterbox ready on {device}", flush=True)
+    return _cb_model
+
+
+def _chatterbox_wav(text: str, language_code: str) -> bytes:
+    import io
+
+    import torchaudio
+
+    model = _load_chatterbox()
+    kwargs = {"language_id": language_code}
+    ref = CHAR.get("reference_audio")
+    if ref:
+        ref_path = HERE / "voices" / ref
+        if not ref_path.exists():
+            raise RuntimeError(f"Reference audio not found: {ref_path}")
+        kwargs["audio_prompt_path"] = str(ref_path)
+    for key in ("exaggeration", "cfg_weight"):
+        if key in CHAR:
+            kwargs[key] = CHAR[key]
+    wav = model.generate(text, **kwargs)
+    buf = io.BytesIO()
+    torchaudio.save(buf, wav.cpu(), model.sr, format="wav")
+    return buf.getvalue()
+
+
 @app.post("/api/tts")
 async def tts(req: TTSRequest):
     text = req.text.strip()
     if not text:
         raise HTTPException(400, "Empty text")
+    if req.language_code not in LANGUAGE_BY_CODE:
+        raise HTTPException(422, "Choose a supported voice language.")
+
+    if TTS_BACKEND == "chatterbox":
+        try:
+            async with _cb_lock:
+                audio = await asyncio.to_thread(_chatterbox_wav, text, req.language_code)
+        except RuntimeError as e:
+            raise HTTPException(503, str(e))
+        return Response(content=audio, media_type="audio/wav")
 
     async with httpx.AsyncClient(timeout=30) as client:
         try:
@@ -265,7 +388,7 @@ async def tts(req: TTSRequest):
                 json={
                     "text": text,
                     "profile_id": profile_id,
-                    "language": VOICEBOX_LANGUAGE,
+                    "language": req.language_code,
                     "engine": VOICEBOX_ENGINE,
                 },
             )
@@ -306,5 +429,33 @@ async def tts(req: TTSRequest):
     raise HTTPException(504, "Voicebox took too long to generate audio.")
 
 
+@app.post("/api/shutdown")
+async def shutdown(request: Request):
+    """Allow the dedicated desktop launcher to stop its own local server."""
+    if not APP_SHUTDOWN_TOKEN:
+        raise HTTPException(404, "Not found")
+    supplied = request.headers.get("X-Voice-Tutor-Token", "")
+    if not secrets.compare_digest(supplied, APP_SHUTDOWN_TOKEN):
+        raise HTTPException(403, "Forbidden")
+    running_server = getattr(app.state, "uvicorn_server", None)
+    if running_server is None:
+        raise HTTPException(503, "Server shutdown is unavailable")
+    running_server.should_exit = True
+    return {"stopping": True}
+
+
+@app.on_event("startup")
+async def preload():
+    if TTS_BACKEND == "chatterbox":
+        async def warm():
+            try:
+                await asyncio.to_thread(_load_chatterbox)
+            except Exception as e:  # shown again when the first voice request fails
+                print(f"[tts] preload failed: {e}", flush=True)
+        asyncio.create_task(warm())
+
+
 if __name__ == "__main__":
-    uvicorn.run(app, host="127.0.0.1", port=8000)
+    running_server = uvicorn.Server(uvicorn.Config(app, host="127.0.0.1", port=8000))
+    app.state.uvicorn_server = running_server
+    running_server.run()

@@ -1,355 +1,352 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Voice Language Tutor</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;600&family=Noto+Sans+JP:wght@400;500&display=swap" rel="stylesheet">
-<style>
-  :root {
-    --bg: #0d1220;
-    --panel: #151c30;
-    --panel-2: #1c2540;
-    --line: #2a3556;
-    --text: #e9ecf5;
-    --muted: #8b95b3;
-    --accent: #f0a9bd;
-    --accent-ink: #2a0f19;
-    --error: #ff8b8b;
-    --jp-serif: "Noto Serif JP", "Yu Mincho", "Hiragino Mincho ProN", serif;
-    --jp-sans: "Noto Sans JP", "Yu Gothic", "Meiryo", system-ui, sans-serif;
-  }
-  * { box-sizing: border-box; }
-  html, body { height: 100%; margin: 0; }
-  body {
-    background: var(--bg); color: var(--text);
-    font-family: var(--jp-sans); font-size: 16px; line-height: 1.6;
-    display: flex; flex-direction: column; max-width: 760px; margin: 0 auto;
-  }
-  header {
-    display: flex; align-items: center; justify-content: space-between; gap: 12px;
-    padding: 14px 18px; border-bottom: 1px solid var(--line); flex-wrap: wrap;
-  }
-  h1 { font-family: var(--jp-serif); font-weight: 600; font-size: 1.25rem; margin: 0; }
-  .toggles { display: flex; gap: 16px; color: var(--muted); font-size: 0.875rem; }
-  .toggles label { display: flex; align-items: center; gap: 6px; cursor: pointer; }
-  input[type=checkbox] { accent-color: var(--accent); }
-  select { background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 3px 6px; font: inherit; font-size: 0.8125rem; }
-
-  #chat { flex: 1; overflow-y: auto; padding: 18px; display: flex; flex-direction: column; gap: 14px; scroll-behavior: smooth; }
-  .empty { color: var(--muted); margin: auto; text-align: center; max-width: 34ch; }
-  .msg { max-width: 88%; padding: 12px 16px; border-radius: 16px; }
-  .me { align-self: flex-end; background: var(--panel-2); border-bottom-right-radius: 4px; font-family: var(--jp-serif); }
-  .mai { align-self: flex-start; background: var(--panel); border: 1px solid var(--line); border-bottom-left-radius: 4px; }
-  .mai .jp { font-family: var(--jp-serif); font-size: 1.15rem; line-height: 1.8; }
-  .actions { display: flex; gap: 10px; align-items: center; margin-top: 8px; }
-  .actions button {
-    background: none; border: 1px solid var(--line); color: var(--muted);
-    border-radius: 999px; padding: 3px 12px; font: inherit; font-size: 0.8125rem; cursor: pointer;
-  }
-  .actions button:hover { color: var(--text); border-color: var(--muted); }
-  details { margin-top: 8px; color: var(--muted); font-size: 0.9375rem; }
-  summary { cursor: pointer; font-size: 0.8125rem; }
-  details p { margin: 6px 0 0; color: var(--text); opacity: 0.85; white-space: pre-wrap; }
-  .typing { color: var(--muted); font-style: italic; }
-
-  #status { min-height: 24px; padding: 0 18px; font-size: 0.8125rem; color: var(--muted); }
-  #status.error { color: var(--error); }
-
-  form {
-    display: flex; gap: 10px; padding: 12px 18px 18px; border-top: 1px solid var(--line);
-    padding-bottom: calc(18px + env(safe-area-inset-bottom, 0px));
-  }
-  #input {
-    flex: 1; background: var(--panel); border: 1px solid var(--line); color: var(--text);
-    border-radius: 12px; padding: 12px 14px; font: inherit; font-family: var(--jp-serif);
-  }
-  #input:focus, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-  .btn { border: 0; border-radius: 12px; padding: 0 18px; font: inherit; font-weight: 500; cursor: pointer; }
-  #send { background: var(--accent); color: var(--accent-ink); }
-  #mic { background: var(--panel-2); color: var(--text); border: 1px solid var(--line); min-width: 88px; }
-  #mic.on { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
-  #mic:disabled { opacity: 0.4; cursor: not-allowed; }
-  @media (prefers-reduced-motion: reduce) { #chat { scroll-behavior: auto; } }
-</style>
-</head>
-<body>
-  <header>
-    <h1 id="title">Voice Language Tutor</h1>
-    <div class="toggles">
-      <label><input type="checkbox" id="autoplay" checked> Voice replies</label>
-      <label><input type="checkbox" id="autosend" checked> Send after speaking</label>
-      <label>Voice chunks
-        <select id="chunk">
-          <option value="1">One sentence</option>
-          <option value="60">Up to ~60 characters</option>
-          <option value="120">Up to ~120 characters</option>
-          <option value="250">Up to ~250 characters</option>
-          <option value="0">Whole reply</option>
-        </select>
-      </label>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#10141c">
+    <title>Voice Language Tutor</title>
+    <style>
+      :root { color-scheme: dark; font: 16px/1.5 system-ui, sans-serif; --bg:#10141c; --panel:#191f2a; --line:#303a49; --text:#edf1f7; --muted:#a8b2c1; --accent:#9ab4ff; }
+      * { box-sizing: border-box; }
+      body { margin:0; min-height:100vh; background:var(--bg); color:var(--text); }
+      button, textarea { font:inherit; }
+      button { border:0; border-radius:10px; padding:.65rem .9rem; color:#101725; background:var(--accent); font-weight:700; cursor:pointer; }
+      button:disabled { opacity:.55; cursor:wait; }
+      .app { min-height:100vh; display:grid; grid-template-rows:auto 1fr auto; max-width:1000px; margin:auto; padding:0 1rem; }
+      header { display:flex; align-items:center; gap:.9rem; padding:1rem 0; border-bottom:1px solid var(--line); }
+      .avatar { display:grid; place-items:center; width:44px; height:44px; border-radius:50%; background:#293754; color:#cddaff; font-weight:800; }
+      h1 { margin:0; font-size:1.1rem; }
+      header p { margin:.1rem 0 0; color:var(--muted); font-size:.9rem; }
+      .header-spacer { flex:1; }
+      .quiet { color:var(--muted); background:transparent; border:1px solid var(--line); }
+      #messages { overflow:auto; padding:1.5rem 0; display:flex; flex-direction:column; gap:1rem; }
+      .welcome { margin:auto; max-width:520px; padding:2rem 1rem; text-align:center; color:var(--muted); }
+      .welcome h2 { color:var(--text); font-size:1.35rem; }
+      .message { max-width:min(760px,92%); padding:.85rem 1rem; border:1px solid var(--line); border-radius:14px; white-space:pre-wrap; overflow-wrap:anywhere; }
+      .message.user { align-self:flex-end; background:#263550; border-color:#354968; }
+      .message.assistant { align-self:flex-start; background:var(--panel); }
+      .speaker { margin:0 0 .3rem; color:var(--muted); font-size:.78rem; font-weight:700; }
+      .target { margin:0; }
+      .translation-details { margin-top:.65rem; color:#c0c9d6; font-size:.92rem; }
+      .translation-details summary { color:var(--muted); cursor:pointer; }
+      .translation { margin:.45rem 0 0; padding-top:.45rem; border-top:1px solid var(--line); }
+      .message-tools { display:flex; gap:.5rem; margin-top:.65rem; }
+      .message-tools button { padding:.35rem .65rem; font-size:.85rem; }
+      audio { display:block; width:min(420px,100%); margin-top:.65rem; }
+      audio[hidden] { display:none; }
+      footer { padding:.8rem 0 1rem; border-top:1px solid var(--line); }
+      .settings { display:flex; flex-wrap:wrap; gap:1rem; margin:.1rem 0 .7rem; color:var(--muted); font-size:.85rem; }
+      .settings label { display:flex; align-items:center; gap:.45rem; }
+      .settings select { color:var(--text); background:var(--panel); border:1px solid var(--line); border-radius:7px; padding:.25rem .4rem; font:inherit; }
+      .composer { display:flex; align-items:flex-end; gap:.55rem; padding:.55rem; border:1px solid #3b4657; border-radius:14px; background:var(--panel); }
+      textarea { flex:1; min-height:48px; max-height:160px; resize:vertical; border:0; outline:0; padding:.55rem; background:transparent; color:var(--text); }
+      #mic { color:var(--text); background:#2a3342; border:1px solid var(--line); }
+      #mic.listening { background:#773b4b; }
+      #status { min-height:1.4em; margin:.4rem .3rem 0; color:var(--muted); font-size:.82rem; }
+      @media(max-width:560px) { .app{padding:0 .7rem} .message{max-width:98%} .settings{gap:.5rem 1rem} #mic{padding:.65rem} }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <header>
+        <div class="avatar" id="avatar" aria-hidden="true">T</div>
+        <div><h1 id="title">Voice Language Tutor</h1><p id="subtitle">Connecting to your tutor…</p></div>
+        <div class="header-spacer"></div>
+        <button class="quiet" id="clear" type="button" title="Clear this conversation">New chat</button>
+      </header>
+      <main id="messages" aria-live="polite" aria-label="Conversation">
+        <section class="welcome" id="welcome"><h2>Start a conversation</h2><p id="welcome-copy">Type a message or use the microphone. Your tutor will reply in your target language.</p></section>
+      </main>
+      <footer>
+        <div class="settings">
+          <label><input id="auto-voice" type="checkbox" checked> Speak replies automatically</label>
+          <label><input id="send-after-speech" type="checkbox"> Send recognized speech automatically</label>
+          <label for="conversation-language">Conversation language
+            <select id="conversation-language" aria-label="Conversation language"></select>
+          </label>
+          <label for="learner-level">Level
+            <select id="learner-level" aria-label="Language proficiency level"></select>
+          </label>
+          <label for="response-length">Reply length
+            <select id="response-length" aria-label="Reply length">
+              <option value="short">Short</option>
+              <option value="normal" selected>Normal</option>
+              <option value="detailed">Detailed</option>
+            </select>
+          </label>
+        </div>
+        <form class="composer" id="form">
+          <button id="mic" type="button" aria-label="Use microphone" title="Speak a message">🎙</button>
+          <textarea id="input" rows="1" placeholder="Write a message…" aria-label="Your message"></textarea>
+          <button id="send" type="submit">Send</button>
+        </form>
+        <p id="status" role="status" aria-live="polite"></p>
+      </footer>
     </div>
-  </header>
+    <script>
+      const $ = (selector) => document.querySelector(selector);
+      const messagesEl = $("#messages");
+      const input = $("#input");
+      const sendButton = $("#send");
+      const micButton = $("#mic");
+      const statusEl = $("#status");
+      const languageSelect = $("#conversation-language");
+      const levelSelect = $("#learner-level");
+      const history = [];
+      const audioCache = new Map();
+      let config = null;
+      let recognition = null;
+      let busy = false;
+      const appShutdownToken = new URLSearchParams(location.hash.slice(1)).get("app_shutdown");
 
-  <main id="chat" aria-live="polite">
-    <p class="empty" id="empty">Press Speak or type a message to start.</p>
-  </main>
+      if (appShutdownToken) {
+        window.addEventListener("pagehide", () => {
+          fetch("/api/shutdown", {
+            method: "POST",
+            headers: { "X-Voice-Tutor-Token": appShutdownToken },
+            keepalive: true,
+          }).catch(() => {});
+        }, { once: true });
+      }
 
-  <div id="status"></div>
+      function setStatus(text) { statusEl.textContent = text; }
+      function addTextMessage(text, role) {
+        $("#welcome")?.remove();
+        const bubble = document.createElement("article");
+        bubble.className = `message ${role}`;
+        const label = document.createElement("p");
+        label.className = "speaker";
+        label.textContent = role === "user" ? "You" : (config?.name || "Tutor");
+        const body = document.createElement("p");
+        body.className = "target";
+        body.textContent = text;
+        bubble.append(label, body);
+        messagesEl.append(bubble);
+        messagesEl.scrollTop = messagesEl.scrollHeight;
+        return bubble;
+      }
+      function appendTutorReply(reply, languageCode) {
+        const bubble = addTextMessage(reply.target, "assistant");
+        if (reply.native) {
+          const details = document.createElement("details");
+          details.className = "translation-details";
+          const summary = document.createElement("summary");
+          summary.textContent = "Show English translation";
+          const note = document.createElement("p");
+          note.className = "translation";
+          note.textContent = reply.native;
+          details.append(summary, note);
+          bubble.append(details);
+        }
+        const controls = document.createElement("div");
+        controls.className = "message-tools";
+        const speak = document.createElement("button");
+        speak.className = "quiet";
+        speak.type = "button";
+        speak.textContent = "Play voice";
+        const regenerate = document.createElement("button");
+        regenerate.className = "quiet";
+        regenerate.type = "button";
+        regenerate.textContent = "Regenerate audio";
+        const player = document.createElement("audio");
+        player.controls = true;
+        player.hidden = true;
+        const audioState = { url:null, player, speak, regenerate, loading:false, languageCode };
+        audioCache.set(bubble, audioState);
+        speak.addEventListener("click", () => speakReply(reply.target, bubble));
+        regenerate.addEventListener("click", () => speakReply(reply.target, bubble, true));
+        controls.append(speak, regenerate);
+        bubble.append(controls, player);
+        messagesEl.scrollTop = messagesEl.scrollHeight;
+        if ($("#auto-voice").checked) speakReply(reply.target, bubble);
+      }
+      async function speakReply(text, bubble, regenerate = false) {
+        const audioState = audioCache.get(bubble);
+        if (!audioState || audioState.loading) return;
+        const { player, speak, regenerate: regenerateButton } = audioState;
+        if (audioState.url && !regenerate) {
+          player.currentTime = 0;
+          try { await player.play(); setStatus("Playing cached tutor audio."); }
+          catch { setStatus("Audio is ready. Press Play on the audio control."); }
+          return;
+        }
+        audioState.loading = true;
+        speak.disabled = true;
+        regenerateButton.disabled = true;
+        speak.textContent = audioState.url ? "Play voice" : "Preparing voice…";
+        regenerateButton.textContent = regenerate ? "Regenerating…" : "Regenerate audio";
+        try {
+          const response = await fetch("/api/tts", {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ text, language_code:audioState.languageCode }),
+          });
+          if (!response.ok) throw new Error(await response.text() || `Voice request failed (${response.status})`);
+          const audioUrl = URL.createObjectURL(await response.blob());
+          const previousUrl = audioState.url;
+          player.pause();
+          player.src = audioUrl;
+          player.hidden = false;
+          player.load();
+          audioState.url = audioUrl;
+          if (previousUrl) URL.revokeObjectURL(previousUrl);
+          try { await player.play(); setStatus("Playing tutor reply."); }
+          catch { setStatus("Audio is ready. Press Play on the audio control."); }
+          speak.textContent = "Play voice";
+        } catch (error) {
+          setStatus(`Voice error: ${error.message}`);
+          if (!audioState.url) speak.textContent = "Retry voice";
+        } finally {
+          audioState.loading = false;
+          speak.disabled = false;
+          regenerateButton.disabled = false;
+          regenerateButton.textContent = "Regenerate audio";
+        }
+      }
+      async function sendMessage(text) {
+        text = text.trim();
+        if (!text || busy) return;
+        const languageCode = languageSelect.value || config?.language_code || "ja";
+        const learnerLevel = levelSelect.value || config?.learner_level || "N5";
+        busy = true;
+        sendButton.disabled = true;
+        micButton.disabled = true;
+        input.value = "";
+        addTextMessage(text, "user");
+        history.push({ role:"user", content:text });
+        setStatus(`${config?.name || "Tutor"} is thinking…`);
+        try {
+          const response = await fetch("/api/chat", {
+            method:"POST", headers:{ "Content-Type":"application/json" },
+            body:JSON.stringify({
+              history,
+              response_length:$("#response-length").value,
+              language_code:languageCode,
+              learner_level:learnerLevel,
+            }),
+          });
+          const reply = await response.json().catch(() => ({}));
+          if (!response.ok) throw new Error(reply.detail || `Chat request failed (${response.status})`);
+          if (!reply.target) throw new Error("The tutor returned an empty reply.");
+          history.push({ role:"assistant", content:reply.target });
+          appendTutorReply(reply, languageCode);
+          setStatus("Reply received.");
+        } catch (error) {
+          history.pop();
+          setStatus(`Chat error: ${error.message}`);
+        } finally {
+          busy = false;
+          sendButton.disabled = false;
+          micButton.disabled = !recognition;
+          input.focus();
+        }
+      }
+      $("#form").addEventListener("submit", (event) => { event.preventDefault(); sendMessage(input.value); });
+      input.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); $("#form").requestSubmit(); }
+      });
+      $("#clear").addEventListener("click", () => {
+        for (const audioState of audioCache.values()) {
+          audioState.player.pause();
+          if (audioState.url) URL.revokeObjectURL(audioState.url);
+        }
+        audioCache.clear();
+        history.length = 0;
+        messagesEl.replaceChildren();
+        const welcome = document.createElement("section");
+        welcome.className = "welcome";
+        welcome.innerHTML = "<h2>Start a conversation</h2><p></p>";
+        welcome.querySelector("p").textContent = config?.empty_text || "Type a message or use the microphone.";
+        messagesEl.append(welcome);
+        setStatus("Conversation cleared.");
+      });
 
-  <form id="form" autocomplete="off">
-    <button type="button" class="btn" id="mic">Speak</button>
-    <input id="input" placeholder="Type, or press Speak">
-    <button type="submit" class="btn" id="send">Send</button>
-  </form>
+      function getLanguage(code) {
+        return config?.languages?.find((language) => language.code === code) || {
+          code: "ja", name: "Japanese", stt: "ja-JP",
+        };
+      }
+      function populateLevels(languageCode, useCharacterDefault = false) {
+        const choices = languageCode === "ja"
+          ? [["N5", "N5 · Beginner"], ["N4", "N4 · Elementary"], ["N3", "N3 · Intermediate"], ["N2", "N2 · Upper intermediate"], ["N1", "N1 · Advanced"]]
+          : [["A1", "A1 · Beginner"], ["A2", "A2 · Elementary"], ["B1", "B1 · Intermediate"], ["B2", "B2 · Upper intermediate"], ["C1", "C1 · Advanced"], ["C2", "C2 · Proficient"]];
+        levelSelect.replaceChildren(...choices.map(([value, label]) => {
+          const option = document.createElement("option");
+          option.value = value;
+          option.textContent = label;
+          return option;
+        }));
+        const saved = localStorage.getItem(`tutor-level-${languageCode}`);
+        let initial = saved;
+        if (!initial && useCharacterDefault) {
+          const levelText = (config?.learner_level || "").toUpperCase();
+          initial = choices.find(([value]) => levelText.includes(value))?.[0];
+        }
+        levelSelect.value = choices.some(([value]) => value === initial) ? initial : choices[0][0];
+        localStorage.setItem(`tutor-level-${languageCode}`, levelSelect.value);
+      }
+      function updateConversationDisplay() {
+        const language = getLanguage(languageSelect.value);
+        const level = levelSelect.value;
+        $("#subtitle").textContent = `${config.native_language} → ${language.name} · ${level}`;
+        input.placeholder = `Write in ${language.name}…`;
+      }
+      languageSelect.addEventListener("change", () => {
+        populateLevels(languageSelect.value);
+        localStorage.setItem("tutor-language", languageSelect.value);
+        updateConversationDisplay();
+        setStatus(`New replies will be in ${getLanguage(languageSelect.value).name}.`);
+      });
+      levelSelect.addEventListener("change", () => {
+        localStorage.setItem(`tutor-level-${languageSelect.value}`, levelSelect.value);
+        updateConversationDisplay();
+        setStatus(`New replies will use ${levelSelect.value} level.`);
+      });
 
-<script>
-const chat = document.getElementById('chat');
-const input = document.getElementById('input');
-const statusEl = document.getElementById('status');
-const micBtn = document.getElementById('mic');
-const autoplayBox = document.getElementById('autoplay');
-const autosendBox = document.getElementById('autosend');
-const chunkSel = document.getElementById('chunk');
+      fetch("/api/config")
+        .then(async (response) => { if (!response.ok) throw new Error(`Settings request failed (${response.status})`); return response.json(); })
+        .then((data) => {
+          config = data;
+          document.title = data.title || "Voice Language Tutor";
+          $("#title").textContent = data.title || "Voice Language Tutor";
+          $("#avatar").textContent = (data.name || "T").trim().slice(0,1).toUpperCase();
+          languageSelect.replaceChildren(...data.languages.map((language) => {
+            const option = document.createElement("option");
+            option.value = language.code;
+            option.textContent = language.name;
+            return option;
+          }));
+          const savedLanguage = localStorage.getItem("tutor-language");
+          languageSelect.value = data.languages.some((language) => language.code === savedLanguage)
+            ? savedLanguage : data.language_code;
+          populateLevels(languageSelect.value, languageSelect.value === data.language_code);
+          updateConversationDisplay();
+          $("#welcome-copy").textContent = data.empty_text || "Type a message or use the microphone.";
+        })
+        .catch((error) => { $("#subtitle").textContent = "Could not load tutor settings"; setStatus(error.message); });
 
-const history = [];
-
-// ---- character settings come from the server (characters/<name>.json) ----
-let CFG = { name: 'Tutor', native_language: 'English', stt_language: 'en-US' };
-fetch('/api/config').then(r => r.json()).then(c => {
-  CFG = c;
-  document.title = c.title;
-  document.getElementById('title').textContent = c.title;
-  input.placeholder = c.placeholder;
-  input.lang = c.stt_language.split('-')[0];
-  if (typeof rec !== 'undefined' && rec) rec.lang = c.stt_language;
-  const e = document.getElementById('empty');
-  if (e) e.textContent = c.empty_text;
-}).catch(() => {});
-
-// ---- settings (remembered between visits) ----
-try {
-  autoplayBox.checked = localStorage.getItem('autoplay') !== '0';
-  autosendBox.checked = localStorage.getItem('autosend') !== '0';
-  chunkSel.value = localStorage.getItem('chunk') || '1';
-} catch (e) {}
-if (!chunkSel.value) chunkSel.value = '1';
-chunkSel.onchange = () => { try { localStorage.setItem('chunk', chunkSel.value); } catch (e) {} };
-autoplayBox.onchange = () => { try { localStorage.setItem('autoplay', autoplayBox.checked ? '1' : '0'); } catch (e) {} };
-autosendBox.onchange = () => { try { localStorage.setItem('autosend', autosendBox.checked ? '1' : '0'); } catch (e) {} };
-
-function setStatus(text, isError = false) {
-  statusEl.textContent = text || '';
-  statusEl.className = isError ? 'error' : '';
-}
-
-function addBubble(cls) {
-  document.getElementById('empty')?.remove();
-  const el = document.createElement('div');
-  el.className = 'msg ' + cls;
-  chat.appendChild(el);
-  chat.scrollTop = chat.scrollHeight;
-  return el;
-}
-
-// ---- voice playback (sentence by sentence) ----
-const audioCache = new Map();   // sentence -> Promise<objectURL>
-let playToken = 0;
-let currentAudio = null;
-let currentResolve = null;
-
-function splitSentences(text) {
-  return (text.match(/[^。！？!?.…]+[。！？!?.…]*/g) || [text]).map(s => s.trim()).filter(Boolean);
-}
-
-// Group sentences into pieces of up to N characters (0 = the whole reply in one go).
-function chunkText(text) {
-  const max = parseInt(chunkSel.value, 10);
-  const sentences = splitSentences(text);
-  if (max === 0) return [sentences.join('')];
-  const out = [];
-  let cur = '';
-  for (const s of sentences) {
-    if (cur && (cur + s).length > max) { out.push(cur); cur = s; } else { cur += s; }
-  }
-  if (cur) out.push(cur);
-  return out;
-}
-
-function getAudio(sentence) {
-  if (audioCache.has(sentence)) return audioCache.get(sentence);
-  const p = (async () => {
-    const r = await fetch('/api/tts', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text: sentence }),
-    });
-    if (!r.ok) {
-      let detail = r.statusText;
-      try { detail = (await r.json()).detail || detail; } catch (e) {}
-      throw new Error(detail);
-    }
-    return URL.createObjectURL(await r.blob());
-  })();
-  p.catch(() => audioCache.delete(sentence));
-  audioCache.set(sentence, p);
-  return p;
-}
-
-function stopAudio() {
-  playToken++;
-  if (currentAudio) { currentAudio.pause(); currentAudio = null; }
-  if (currentResolve) { currentResolve(); currentResolve = null; }
-}
-
-function playUrl(url) {
-  return new Promise((resolve, reject) => {
-    const a = new Audio(url);
-    currentAudio = a;
-    currentResolve = resolve;
-    a.onended = () => { currentResolve = null; resolve(); };
-    a.onerror = () => { currentResolve = null; reject(new Error('Could not play the audio.')); };
-    a.play().catch(reject);
-  });
-}
-
-async function speak(text) {
-  stopAudio();
-  const token = playToken;
-  const sentences = chunkText(text);
-  try {
-    for (let i = 0; i < sentences.length; i++) {
-      if (token !== playToken) return;
-      setStatus(`${CFG.name} is preparing the voice… (${i + 1}/${sentences.length})`);
-      const url = await getAudio(sentences[i]);
-      if (token !== playToken) return;
-      if (i + 1 < sentences.length) getAudio(sentences[i + 1]).catch(() => {}); // prepare next while this plays
-      setStatus(`${CFG.name} is speaking…`);
-      await playUrl(url);
-    }
-    if (token === playToken) setStatus('');
-  } catch (e) {
-    if (token === playToken) setStatus('Voice problem: ' + e.message, true);
-  }
-}
-
-// ---- chat ----
-async function send(text) {
-  text = text.trim();
-  if (!text) return;
-  stopAudio();
-  input.value = '';
-  addBubble('me').textContent = text;
-  history.push({ role: 'user', content: text });
-
-  const wait = addBubble('mai');
-  wait.innerHTML = '<span class="typing">…</span>';
-  setStatus('');
-
-  try {
-    const r = await fetch('/api/chat', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ history }),
-    });
-    if (!r.ok) {
-      let detail = r.statusText;
-      try { detail = (await r.json()).detail || detail; } catch (e) {}
-      throw new Error(detail);
-    }
-    const { target, native } = await r.json();
-    history.push({ role: 'assistant', content: JSON.stringify({ target, native }) });
-    renderMai(wait, target, native);
-    if (autoplayBox.checked && target) speak(target);
-  } catch (e) {
-    wait.remove();
-    history.pop();
-    setStatus('Chat problem: ' + e.message, true);
-  }
-}
-
-function renderMai(el, target, native) {
-  el.textContent = '';
-  const jp = document.createElement('div');
-  jp.className = 'jp';
-  jp.textContent = target;
-  el.appendChild(jp);
-
-  const actions = document.createElement('div');
-  actions.className = 'actions';
-  const play = document.createElement('button');
-  play.type = 'button';
-  play.textContent = 'Play voice';
-  play.onclick = () => speak(target);
-  const stop = document.createElement('button');
-  stop.type = 'button';
-  stop.textContent = 'Stop';
-  stop.onclick = () => { stopAudio(); setStatus(''); };
-  actions.append(play, stop);
-  el.appendChild(actions);
-
-  if (native) {
-    const d = document.createElement('details');
-    const s = document.createElement('summary');
-    s.textContent = CFG.native_language;
-    const p = document.createElement('p');
-    p.textContent = native;
-    d.append(s, p);
-    el.appendChild(d);
-  }
-  chat.scrollTop = chat.scrollHeight;
-}
-
-document.getElementById('form').addEventListener('submit', e => {
-  e.preventDefault();
-  send(input.value);
-});
-
-// ---- speaking to the tutor (browser speech recognition) ----
-const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-let rec = null;
-let listening = false;
-
-if (!SR) {
-  micBtn.disabled = true;
-  micBtn.title = 'Speech input needs Chrome or Edge';
-  setStatus('Speech input needs Chrome or Edge. You can still type.', true);
-} else {
-  rec = new SR();
-  rec.lang = CFG.stt_language;
-  rec.interimResults = true;
-  rec.continuous = false;
-
-  rec.onstart = () => { listening = true; micBtn.classList.add('on'); micBtn.textContent = 'Listening…'; setStatus(''); };
-  rec.onend = () => { listening = false; micBtn.classList.remove('on'); micBtn.textContent = 'Speak'; };
-  rec.onerror = e => {
-    const msgs = {
-      'not-allowed': 'Microphone is blocked. Click the lock icon in the address bar and allow the microphone.',
-      'service-not-allowed': 'Microphone is blocked. Click the lock icon in the address bar and allow the microphone.',
-      'no-speech': 'I did not hear anything. Try again.',
-      'audio-capture': 'No microphone found.',
-      'network': 'Speech recognition needs an internet connection.',
-    };
-    setStatus(msgs[e.error] || 'Speech input problem: ' + e.error, true);
-  };
-  rec.onresult = e => {
-    let finalText = '', interim = '';
-    for (let i = e.resultIndex; i < e.results.length; i++) {
-      const t = e.results[i][0].transcript;
-      if (e.results[i].isFinal) finalText += t; else interim += t;
-    }
-    input.value = finalText || interim;
-    if (finalText && autosendBox.checked) send(finalText);
-  };
-
-  micBtn.onclick = () => {
-    if (listening) { rec.stop(); return; }
-    stopAudio();
-    setStatus('');
-    try { rec.start(); } catch (e) {}
-  };
-}
-</script>
-</body>
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (SpeechRecognition) {
+        recognition = new SpeechRecognition();
+        recognition.interimResults = false;
+        recognition.continuous = false;
+        recognition.onstart = () => { micButton.classList.add("listening"); setStatus("Listening…"); };
+        recognition.onend = () => micButton.classList.remove("listening");
+        recognition.onerror = (event) => setStatus(`Microphone error: ${event.error}. You can still type a message.`);
+        recognition.onresult = (event) => {
+          const transcript = event.results[0][0].transcript.trim();
+          input.value = transcript;
+          input.focus();
+          if ($("#send-after-speech").checked) sendMessage(transcript);
+          else setStatus("Speech recognized. Review or edit it, then send.");
+        };
+        micButton.addEventListener("click", () => {
+          recognition.lang = getLanguage(languageSelect.value).stt || config?.stt_language || "en-US";
+          try { recognition.start(); } catch { setStatus("Microphone is already listening."); }
+        });
+      } else {
+        micButton.disabled = true;
+        micButton.title = "Speech recognition is not available in this browser. You can type instead.";
+      }
+    </script>
+  </body>
 </html>

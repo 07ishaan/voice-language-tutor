@@ -11,17 +11,23 @@ Talk to a language tutor with **any voice you design**. You speak, the tutor ans
 You speak -> browser -> text -> Groq -> reply text -> Voicebox -> audio
                                          |-> shown on screen (+ translation and notes)
 ```
-   ![Screenshot](docs/Screenshot.png)
 
 ## Quick start (Windows)
 
-1. Install [Python 3.10+](https://python.org) (tick **Add python.exe to PATH**).
-2. Install and open the **Voicebox** app. Create a voice profile in it (describe a voice or add a short reference sample) and note its name.
-3. Get a free Groq API key at console.groq.com -> API Keys.
-4. Double-click **`start.bat`**. On the first run it installs what it needs and opens `.env` for your key.
-5. The tutor opens in Chrome or Edge at http://localhost:8000.
+1. Get a Groq API key at console.groq.com -> API Keys.
+2. Double-click **`start.bat`**. On a clean Windows PC it installs Python 3.11, creates a private environment, installs Chatterbox and the app dependencies, and installs Chrome if needed. Internet access and several GB of free disk space are required.
+3. On first launch, enter your Groq API key. You can optionally enter the path to your own WAV reference clip; press Enter to use Chatterbox's built-in voice. The reference clip is copied into this PC's app folder.
+4. The tutor opens in a single Chrome app window. Close that window to stop the server. The Chatterbox model downloads on the first server start.
 
-Mac/Linux: run `./start.sh` instead.
+To make a shareable Windows package, run `package-for-other-pc.ps1` from this folder. It creates a ZIP containing only the app and generic tutor files. It excludes `.env`, your local character, and all voice files. Send that ZIP to the other PC, extract it, and double-click `start.bat`.
+
+## Built-in voice (no Voicebox)
+
+Instead of the separate Voicebox app, the tutor can run the [Chatterbox](https://github.com/resemble-ai/chatterbox) speech model itself (MIT licence, supports 23 languages including Japanese, Spanish and French).
+
+The Windows launcher configures this automatically. It detects an NVIDIA driver and selects CUDA 12.4 PyTorch; otherwise it uses CPU PyTorch. A custom reference audio clip is optional; without one, Chatterbox uses its built-in voice.
+
+Chatterbox adds an inaudible watermark to the audio it generates. The first start downloads the model and can take several minutes.
 
 ## Make your own tutor
 
@@ -53,31 +59,18 @@ Files named `characters/local-*.json` are ignored by git, so you can keep privat
 ## Settings in the page
 
 - **Voice replies:** speak every reply automatically, or press *Play voice*.
+- **Reply length:** choose a short, normal, or detailed tutor response.
+- **Conversation language:** choose the language to practice from Chatterbox's supported languages; generated speech follows the selection.
+- **Level:** choose JLPT N5 to N1 for Japanese, or CEFR A1 to C2 for other languages.
+- **English translation:** open *Show English translation* under a reply when you want to see it.
+- **Audio replay:** generated audio is kept with its message for replay; use *Regenerate audio* to create a fresh take.
 - **Send after speaking:** send your speech as soon as it is recognised, or edit it first.
 - **Voice chunks:** how much text is sent to Voicebox at once. Short chunks start sooner. Long chunks can sound smoother but may drift in voice quality and take longer to start.
-
-## Known limitations
-
-This is an early version (v0.1.0). Please read these before you start.
-
-**Tested on:** Windows 11 with Voicebox v0.5.0, an NVIDIA RTX 3060 (12 GB) and the Chatterbox multilingual engine. The Mac/Linux launcher (`start.sh`) and other setups are untested. Voicebox's local API addresses may change between versions, so a different version may need small changes in `server.py`.
-
-**Voice speed.** Local speech models can generate slower than real time on mid-range GPUs. On the test machine, Chatterbox took about 10 seconds for 4 seconds of audio, and Qwen3-TTS was slower. The tutor shows the reply text immediately and speaks sentence by sentence to hide some of the delay. Shorter replies and smaller voice chunks start speaking sooner.
-
-**Voice quality.** Pronunciation, pitch accent and consistency depend on the voice model, the language and your reference sample or voice description. Always check that the voice sounds right in your target language before relying on it for study. Long chunks of text can make a cloned voice drift.
-
-**Speech input.** It uses your browser's built-in speech recognition, so it needs Chrome or Edge and an internet connection. It may "correct" unclear pronunciation into the most likely sentence, so it is not a pronunciation checker.
-
-**The AI tutor.** Replies come from a language model on Groq's free tier. It can make mistakes in grammar, vocabulary or explanations, so double-check anything important with a textbook or a teacher. Free-tier limits apply, and Groq changes which models are available. The tutor asks Groq for the current list and picks one automatically, and `http://localhost:8000/api/models` shows what your key can use.
-
-**No saved history.** The conversation lives in the browser page and is lost when you reload it. Only your page settings are remembered.
-
-**Local only.** The server is meant to run on your own computer. Do not expose it to the internet, because it uses your Groq API key.
 
 ## Troubleshooting
 
 - **Model not found / Groq error:** open http://localhost:8000/api/models to see which models your key can use. Leave `GROQ_MODEL` empty to choose automatically.
-- **The tutor never speaks:** make sure the Voicebox app is open, and watch the `[tts]` lines in the server window.
+- **Tutor never speaks:** make sure the Voicebox app is open, and watch the `[tts]` lines in the server window.
 - **Profile not found:** `voice_profile` must match the profile name in Voicebox exactly. The error lists the names it found.
 - **Slow voice:** local speech models can run slower than real time on mid-range GPUs. Try shorter replies or smaller chunks.
 - **Speech input does not work:** use Chrome or Edge, allow the microphone, and check your internet connection.
