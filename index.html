@@ -19,6 +19,19 @@
       header p { margin:.1rem 0 0; color:var(--muted); font-size:.9rem; }
       .header-spacer { flex:1; }
       .quiet { color:var(--muted); background:transparent; border:1px solid var(--line); }
+      .header-actions { display:flex; align-items:center; gap:.45rem; }
+      #saved-chats-dialog { width:min(560px,calc(100vw - 2rem)); max-height:min(80vh,700px); padding:1.1rem; color:var(--text); background:var(--panel); border:1px solid var(--line); border-radius:14px; }
+      #saved-chats-dialog::backdrop { background:rgb(0 0 0 / 65%); }
+      .dialog-heading { display:flex; align-items:center; gap:.7rem; }
+      .dialog-heading h2 { margin:0; font-size:1.15rem; }
+      .dialog-heading .header-spacer { flex:1; }
+      #saved-chat-note, #saved-chat-empty { color:var(--muted); font-size:.9rem; }
+      #saved-chat-list { display:flex; flex-direction:column; gap:.55rem; max-height:55vh; overflow:auto; }
+      .saved-chat-row { display:flex; gap:.5rem; align-items:stretch; }
+      .saved-chat-open { flex:1; min-width:0; text-align:left; color:var(--text); background:#202938; border:1px solid var(--line); }
+      .saved-chat-open strong, .saved-chat-open small { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+      .saved-chat-open small { color:var(--muted); font-weight:400; }
+      .saved-chat-delete { color:var(--muted); background:transparent; border:1px solid var(--line); }
       #messages { overflow:auto; padding:1.5rem 0; display:flex; flex-direction:column; gap:1rem; }
       .welcome { margin:auto; max-width:520px; padding:2rem 1rem; text-align:center; color:var(--muted); }
       .welcome h2 { color:var(--text); font-size:1.35rem; }
@@ -43,7 +56,7 @@
       #mic { color:var(--text); background:#2a3342; border:1px solid var(--line); }
       #mic.listening { background:#773b4b; }
       #status { min-height:1.4em; margin:.4rem .3rem 0; color:var(--muted); font-size:.82rem; }
-      @media(max-width:560px) { .app{padding:0 .7rem} .message{max-width:98%} .settings{gap:.5rem 1rem} #mic{padding:.65rem} }
+      @media(max-width:560px) { .app{padding:0 .7rem} .message{max-width:98%} .settings{gap:.5rem 1rem} #mic{padding:.65rem} header{flex-wrap:wrap} header .header-spacer{display:none} .header-actions{width:100%;justify-content:flex-end} .header-actions button{padding:.5rem .65rem;font-size:.86rem} }
     </style>
   </head>
   <body>
@@ -52,8 +65,22 @@
         <div class="avatar" id="avatar" aria-hidden="true">T</div>
         <div><h1 id="title">Voice Language Tutor</h1><p id="subtitle">Connecting to your tutor…</p></div>
         <div class="header-spacer"></div>
-        <button class="quiet" id="clear" type="button" title="Clear this conversation">New chat</button>
+        <nav class="header-actions" aria-label="Chat actions">
+          <button class="quiet" id="save-chat" type="button" title="Save this conversation in this browser">Save chat</button>
+          <button class="quiet" id="open-chats" type="button" title="Open a saved conversation">Saved chats</button>
+          <button class="quiet" id="clear" type="button" title="Start a new conversation">New chat</button>
+        </nav>
       </header>
+      <dialog id="saved-chats-dialog" aria-labelledby="saved-chats-title">
+        <div class="dialog-heading">
+          <h2 id="saved-chats-title">Saved chats</h2>
+          <div class="header-spacer"></div>
+          <button class="quiet" id="close-saved-chats" type="button">Close</button>
+        </div>
+        <p id="saved-chat-note">Chats are stored only in this browser. Audio can be generated again when you play a reply.</p>
+        <p id="saved-chat-empty" hidden>No saved chats yet.</p>
+        <div id="saved-chat-list"></div>
+      </dialog>
       <main id="messages" aria-live="polite" aria-label="Conversation">
         <section class="welcome" id="welcome"><h2>Start a conversation</h2><p id="welcome-copy">Type a message or use the microphone. Your tutor will reply in your target language.</p></section>
       </main>
@@ -93,6 +120,9 @@
       const languageSelect = $("#conversation-language");
       const levelSelect = $("#learner-level");
       const history = [];
+      const conversationMessages = [];
+      let currentSavedChatId = null;
+      const savedChatsKey = 'voice-tutor-saved-chats';
       const audioCache = new Map();
       let config = null;
       let recognition = null;
@@ -125,7 +155,7 @@
         messagesEl.scrollTop = messagesEl.scrollHeight;
         return bubble;
       }
-      function appendTutorReply(reply, languageCode) {
+      function appendTutorReply(reply, languageCode, autoPlay = true) {
         const bubble = addTextMessage(reply.target, "assistant");
         if (reply.native) {
           const details = document.createElement("details");
@@ -158,7 +188,7 @@
         controls.append(speak, regenerate);
         bubble.append(controls, player);
         messagesEl.scrollTop = messagesEl.scrollHeight;
-        if ($("#auto-voice").checked) speakReply(reply.target, bubble);
+        if (autoPlay && $("#auto-voice").checked) speakReply(reply.target, bubble);
       }
       async function speakReply(text, bubble, regenerate = false) {
         const audioState = audioCache.get(bubble);
@@ -211,7 +241,7 @@
         sendButton.disabled = true;
         micButton.disabled = true;
         input.value = "";
-        addTextMessage(text, "user");
+        const userBubble = addTextMessage(text, "user");
         history.push({ role:"user", content:text });
         setStatus(`${config?.name || "Tutor"} is thinking…`);
         try {
@@ -228,10 +258,14 @@
           if (!response.ok) throw new Error(reply.detail || `Chat request failed (${response.status})`);
           if (!reply.target) throw new Error("The tutor returned an empty reply.");
           history.push({ role:"assistant", content:reply.target });
+          conversationMessages.push({ role:"user", content:text });
+          conversationMessages.push({ role:"assistant", content:reply.target, native:reply.native || "", languageCode });
           appendTutorReply(reply, languageCode);
+          if (currentSavedChatId) saveCurrentChat(true);
           setStatus("Reply received.");
         } catch (error) {
           history.pop();
+          userBubble.remove();
           setStatus(`Chat error: ${error.message}`);
         } finally {
           busy = false;
@@ -244,22 +278,169 @@
       input.addEventListener("keydown", (event) => {
         if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); $("#form").requestSubmit(); }
       });
-      $("#clear").addEventListener("click", () => {
+      function getSavedChats() {
+        try {
+          const value = JSON.parse(localStorage.getItem(savedChatsKey) || "[]");
+          return Array.isArray(value) ? value.filter((chat) => chat && typeof chat.id === "string") : [];
+        } catch { return []; }
+      }
+      function makeChatId() {
+        return window.crypto?.randomUUID?.() || (Date.now().toString(36) + Math.random().toString(36).slice(2));
+      }
+      function saveCurrentChat(silent = false) {
+        if (!conversationMessages.length) {
+          if (!silent) setStatus("Send a message before saving this chat.");
+          return false;
+        }
+        const chats = getSavedChats();
+        const existing = chats.find((chat) => chat.id === currentSavedChatId);
+        const firstUser = conversationMessages.find((message) => message.role === "user")?.content || "";
+        const compactTitle = firstUser.replace(/\s+/g, " ").trim();
+        const title = existing?.title || (compactTitle.slice(0, 48) + (compactTitle.length > 48 ? "…" : "")) || "Saved chat";
+        const now = new Date().toISOString();
+        const id = currentSavedChatId || makeChatId();
+        const chat = {
+          id, title, createdAt:existing?.createdAt || now, updatedAt:now,
+          settings:{
+            languageCode:languageSelect.value,
+            learnerLevel:levelSelect.value,
+            responseLength:$("#response-length").value,
+          },
+          messages:conversationMessages.map((message) => ({
+            role:message.role, content:message.content, native:message.native || "",
+            languageCode:message.languageCode || "",
+          })),
+        };
+        const index = chats.findIndex((item) => item.id === id);
+        if (index < 0) chats.unshift(chat); else chats[index] = chat;
+        try {
+          localStorage.setItem(savedChatsKey, JSON.stringify(chats));
+          currentSavedChatId = id;
+          if ($("#saved-chats-dialog").open) renderSavedChats();
+          if (!silent) setStatus("Chat saved in this browser.");
+          return true;
+        } catch (error) {
+          if (!silent) setStatus("Could not save chat in this browser: " + error.message);
+          return false;
+        }
+      }
+      function renderSavedChats() {
+        const list = $("#saved-chat-list");
+        const empty = $("#saved-chat-empty");
+        const chats = getSavedChats().sort((a, b) => (b.updatedAt || "").localeCompare(a.updatedAt || ""));
+        list.replaceChildren();
+        empty.hidden = chats.length > 0;
+        for (const chat of chats) {
+          const row = document.createElement("div");
+          row.className = "saved-chat-row";
+          const open = document.createElement("button");
+          open.type = "button";
+          open.className = "saved-chat-open";
+          const title = document.createElement("strong");
+          title.textContent = chat.title || "Saved chat";
+          const detail = document.createElement("small");
+          const date = chat.updatedAt ? new Date(chat.updatedAt).toLocaleString() : "Saved conversation";
+          const count = Array.isArray(chat.messages) ? chat.messages.length : 0;
+          detail.textContent = date + " · " + count + " messages";
+          open.append(title, detail);
+          open.addEventListener("click", () => openSavedChat(chat.id));
+          const remove = document.createElement("button");
+          remove.type = "button";
+          remove.className = "saved-chat-delete";
+          remove.textContent = "Delete";
+          remove.setAttribute("aria-label", "Delete saved chat: " + (chat.title || "Saved chat"));
+          remove.addEventListener("click", () => deleteSavedChat(chat.id));
+          row.append(open, remove);
+          list.append(row);
+        }
+      }
+      function releaseRenderedAudio() {
         for (const audioState of audioCache.values()) {
           audioState.player.pause();
           if (audioState.url) URL.revokeObjectURL(audioState.url);
         }
         audioCache.clear();
+      }
+      function clearRenderedChat() {
+        releaseRenderedAudio();
         history.length = 0;
+        conversationMessages.length = 0;
         messagesEl.replaceChildren();
         const welcome = document.createElement("section");
         welcome.className = "welcome";
-        welcome.innerHTML = "<h2>Start a conversation</h2><p></p>";
-        welcome.querySelector("p").textContent = config?.empty_text || "Type a message or use the microphone.";
+        const heading = document.createElement("h2");
+        heading.textContent = "Start a conversation";
+        const copy = document.createElement("p");
+        copy.textContent = config?.empty_text || "Type a message or use the microphone.";
+        welcome.append(heading, copy);
         messagesEl.append(welcome);
-        setStatus("Conversation cleared.");
-      });
+      }
+      function deleteSavedChat(id) {
+        const chat = getSavedChats().find((item) => item.id === id);
+        if (!chat || !confirm("Delete the saved chat “" + (chat.title || "Saved chat") + "”?")) return;
+        localStorage.setItem(savedChatsKey, JSON.stringify(getSavedChats().filter((item) => item.id !== id)));
+        if (currentSavedChatId === id) currentSavedChatId = null;
+        renderSavedChats();
+        setStatus("Saved chat deleted.");
+      }
+      function openSavedChat(id) {
+        if (busy) { setStatus("Wait for the current reply before opening a saved chat."); return; }
+        const saved = getSavedChats().find((chat) => chat.id === id);
+        if (!saved) { setStatus("That saved chat is no longer available."); renderSavedChats(); return; }
+        if (conversationMessages.length && !currentSavedChatId &&
+            confirm("Save the current conversation before opening another chat?") &&
+            !saveCurrentChat(true)) return;
 
+        clearRenderedChat();
+        const settings = saved.settings || {};
+        const validLanguage = config?.languages?.some((language) => language.code === settings.languageCode);
+        languageSelect.value = validLanguage ? settings.languageCode : (config?.language_code || "ja");
+        populateLevels(languageSelect.value);
+        if ([...levelSelect.options].some((option) => option.value === settings.learnerLevel)) {
+          levelSelect.value = settings.learnerLevel;
+        }
+        localStorage.setItem("tutor-language", languageSelect.value);
+        localStorage.setItem("tutor-level-" + languageSelect.value, levelSelect.value);
+        if (["short", "normal", "detailed"].includes(settings.responseLength)) {
+          $("#response-length").value = settings.responseLength;
+        }
+        updateConversationDisplay();
+
+        const items = Array.isArray(saved.messages) ? saved.messages : [];
+        for (const message of items) {
+          if (!message || !["user", "assistant"].includes(message.role) || typeof message.content !== "string") continue;
+          const record = {
+            role:message.role, content:message.content, native:message.native || "",
+            languageCode:message.languageCode || settings.languageCode || config?.language_code || "ja",
+          };
+          conversationMessages.push(record);
+          history.push({ role:record.role, content:record.content });
+          if (record.role === "user") addTextMessage(record.content, "user");
+          else appendTutorReply({ target:record.content, native:record.native }, record.languageCode, false);
+        }
+        currentSavedChatId = saved.id;
+        $("#saved-chats-dialog").close();
+        messagesEl.scrollTop = messagesEl.scrollHeight;
+        setStatus("Opened saved chat: " + (saved.title || "Saved chat") + ".");
+      }
+
+      $("#save-chat").addEventListener("click", () => saveCurrentChat());
+      $("#open-chats").addEventListener("click", () => {
+        if (busy) { setStatus("Wait for the current reply before opening saved chats."); return; }
+        renderSavedChats();
+        $("#saved-chats-dialog").showModal();
+      });
+      $("#close-saved-chats").addEventListener("click", () => $("#saved-chats-dialog").close());
+      $("#clear").addEventListener("click", () => {
+        if (busy) { setStatus("Wait for the current reply before starting a new chat."); return; }
+        if (conversationMessages.length && !currentSavedChatId &&
+            confirm("Save the current conversation before starting a new chat?")) {
+          if (!saveCurrentChat(true)) return;
+        }
+        currentSavedChatId = null;
+        clearRenderedChat();
+        setStatus("New conversation started.");
+      });
       function getLanguage(code) {
         return config?.languages?.find((language) => language.code === code) || {
           code: "ja", name: "Japanese", stt: "ja-JP",

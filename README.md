@@ -22,6 +22,7 @@ Plan for roughly 8–9 GB after setup: about 5–6 GB for Python, PyTorch, and a
 - **Reply length:** choose Short, Normal, or Detailed to control how much the tutor says in each response.
 - **English translation:** open **Show English translation** below a reply when you need its translation and learning note.
 - **Audio:** generated speech stays with its reply for replay during the conversation. Choose **Regenerate audio** to create a fresh version.
+- **Saved chats:** choose **Save chat** to save the conversation in this browser, then open it later from **Saved chats**. Reopened chats restore their messages, translations, and language settings; audio is generated again when you play a reply. Continuing a saved chat updates that saved copy.
 - **Speak replies automatically:** have the tutor play audio as soon as a reply is ready, or use **Play voice** when you want to listen.
 - **Send recognized speech automatically:** send a recognized utterance right away, or turn this off to review and edit it before sending.
 - **New chat:** clear the current conversation and start again.
