@@ -13,7 +13,7 @@ Practice a conversation with an AI language tutor. Speak or type, receive a repl
 5. Optionally enter the path to a WAV reference recording for a custom voice. Press Enter to use Chatterbox's built-in voice. Only use a recording you made or have permission to use.
 6. The tutor opens in a Chrome app window. Close that window to stop the local server.
 
-The first setup downloads several GB of Python packages. Chatterbox downloads its speech model the first time the server starts, so allow a few minutes and keep the computer online. Later launches reuse the installed environment and downloaded model.
+Plan for roughly 8–9 GB after setup: about 5–6 GB for Python, PyTorch, and app dependencies, plus about 3 GB for the Chatterbox speech model. Keep at least 12 GB free during first setup to allow for temporary download and installer files. The exact amount varies by CPU or NVIDIA/CUDA setup. The model downloads the first time the server starts; allow a few minutes and keep the computer online. Later launches reuse the installed environment and model.
 
 ## Conversation controls
 
@@ -43,4 +43,4 @@ To create a shareable Windows ZIP, run `package-for-other-pc.ps1`. It includes t
 
 ## License
 
-MIT. See `LICENSE`.
+[MIT License](LICENSE).
