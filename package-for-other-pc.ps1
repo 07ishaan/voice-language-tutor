@@ -18,7 +18,8 @@ $files = @(
     'index.html',
     'requirements.txt',
     'requirements-chatterbox.txt',
-    'README.md'
+    'README.md',
+    'LICENSE'
 )
 foreach ($file in $files) {
     $source = Join-Path $root $file
@@ -28,6 +29,8 @@ foreach ($file in $files) {
     Copy-Item -LiteralPath $source -Destination (Join-Path $app $file)
 }
 Copy-Item -LiteralPath (Join-Path $root 'characters/example-japanese.json') -Destination (Join-Path $app 'characters/example-japanese.json')
+New-Item -ItemType Directory -Force -Path (Join-Path $app 'docs') | Out-Null
+Copy-Item -LiteralPath (Join-Path $root 'docs/tutor-ui.png') -Destination (Join-Path $app 'docs/tutor-ui.png')
 
 $zip = Join-Path $release "VoiceTutor-Windows-$stamp.zip"
 Compress-Archive -LiteralPath $app -DestinationPath $zip -CompressionLevel Optimal
