@@ -2,7 +2,7 @@
 
 Practice a conversation with an AI language tutor. Speak or type, receive a reply in your target language, and listen to it with locally generated speech.
 
-![Voice Language Tutor showing a Japanese conversation, translation dropdown, cached audio controls, language and level selectors, and reply length](docs/tutor-ui.png)
+![Voice Language Tutor showing a Japanese conversation with save and open chat controls, translation dropdowns, audio controls, language and level selectors, and reply length](docs/tutor-ui.png)
 
 ## Windows setup
 
