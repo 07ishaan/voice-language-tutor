@@ -47,7 +47,7 @@ Chatterbox runs locally and supports speech generation without a separate Voiceb
 
 To customize the tutor, edit a JSON file under `characters/` or copy one of the examples. Set `CHARACTER` in your local `.env` to the file name without `.json`, then restart the app. Keep local settings, API keys, reference recordings, and private character files out of public commits.
 
-To create a shareable Windows ZIP, run `package-for-other-pc.ps1`. To create a Linux/macOS archive, run `python package-unix.py`. Both include the app and example character, but exclude `.env`, `.venv`, local characters, and voice recordings. On another computer, extract its archive and launch with `start.bat` (Windows), `./start.sh` (Linux), or `start-macos.command` (macOS); that computer can provide its own Groq key and optional reference WAV during setup.
+To create a shareable Windows ZIP, run `package-for-other-pc.ps1`. Run `python package-unix.py` to create separate `VoiceTutor-Linux-v2.1.0.tar.gz` and `VoiceTutor-macOS-v2.1.0.tar.gz` archives. The packages include the app and example character, but exclude `.env`, `.venv`, local characters, and voice recordings. On another computer, extract its archive and launch with `start.bat` (Windows), `./start.sh` (Linux), or `start-macos.command` (macOS); that computer can provide its own Groq key and optional reference WAV during setup.
 
 ## Troubleshooting
 
