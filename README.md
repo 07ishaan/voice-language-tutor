@@ -4,6 +4,16 @@ Practice a conversation with an AI language tutor. Speak or type, receive a repl
 
 ![Voice Language Tutor showing a Japanese conversation with save and open chat controls, translation dropdowns, audio controls, language and level selectors, and reply length](docs/tutor-ui.png)
 
+## Release downloads
+
+Download the release archive for your operating system from [GitHub Releases](https://github.com/07ishaan/voice-language-tutor/releases):
+
+- **Windows:** `VoiceTutor-v2.0.0-Windows.zip` (release `v2.0.0`)
+- **Linux:** `VoiceTutor-Linux-v2.1.0.tar.gz` (release `v2.1.0`)
+- **macOS:** `VoiceTutor-macOS-v2.1.0.tar.gz` (release `v2.1.0`)
+
+Extract the archive, then follow the setup instructions for your operating system below.
+
 ## Windows setup
 
 1. Install or create a [Groq API key](https://console.groq.com/keys).
