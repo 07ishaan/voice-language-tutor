@@ -335,7 +335,12 @@ def _load_chatterbox():
                 "Chatterbox is not installed. See 'Built-in voice' in the README. "
                 f"({e})"
             )
-        device = "cuda" if torch.cuda.is_available() else "cpu"
+        if torch.cuda.is_available():
+            device = "cuda"
+        elif hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
+            device = "mps"
+        else:
+            device = "cpu"
         print(f"[tts] loading Chatterbox on {device} (first time can take a few minutes)...", flush=True)
         _cb_model = ChatterboxMultilingualTTS.from_pretrained(device=device)
         print(f"[tts] Chatterbox ready on {device}", flush=True)

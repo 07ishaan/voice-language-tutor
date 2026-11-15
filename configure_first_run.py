@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import json
+import getpass
 import shutil
-import subprocess
 from pathlib import Path
 
 
@@ -43,7 +43,7 @@ def write_key(key: str) -> None:
 
 
 def prompt_api_key() -> str | None:
-    """Use a masked paste-friendly dialog, then a silent clipboard fallback."""
+    """Use a masked dialog where available, or a masked terminal prompt."""
     try:
         import tkinter as tk
         from tkinter import simpledialog
@@ -60,22 +60,8 @@ def prompt_api_key() -> str | None:
         root.destroy()
         return key.strip() if key is not None else None
     except Exception:
-        print("The masked paste dialog could not open.")
-        print("Copy the API key to your clipboard, then press Enter here; it will not be displayed.")
-        input("Press Enter after copying the key: ")
-        try:
-            result = subprocess.run(
-                ["powershell.exe", "-NoProfile", "-NonInteractive", "-Command", "Get-Clipboard -Raw"],
-                capture_output=True,
-                text=True,
-                encoding="utf-8",
-                timeout=10,
-                check=True,
-            )
-            return result.stdout.strip()
-        except Exception:
-            print("Clipboard reading failed. You can enter the key below; it will be visible in this terminal.")
-            return input("Groq API key: ").strip()
+        print("The masked key dialog could not open. Enter the key in the terminal; input stays hidden.")
+        return getpass.getpass("Groq API key: ").strip()
 
 
 def choose_reference() -> str | None:
@@ -104,13 +90,13 @@ def main() -> int:
         shutil.copy2(ROOT / ".env.example", ENV_FILE)
 
     if not read_key():
-        print("\nEnter your own Groq API key. It will be saved in this PC's .env file.")
+        print("\nEnter your own Groq API key. It will be saved in this computer's .env file.")
         key = prompt_api_key()
         if key is None:
-            print("Key entry canceled. Run start.bat again to retry.")
+            print("Key entry canceled. Run the launcher again to retry.")
             return 1
         if not key or "\n" in key or "\r" in key:
-            print("No valid API key was received. Run start.bat again to retry.")
+            print("No valid API key was received. Run the launcher again to retry.")
             return 1
         write_key(key)
 
